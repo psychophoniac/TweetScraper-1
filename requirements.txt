@@ -1,4 +1,4 @@
-scrapy
-scrapy-selenium
+scrapy-selenium==0.0.7
+selenium==3.141.0
 ipython
 ipdb
