@@ -42,3 +42,9 @@ Keeping the crawler up to date requires continuous efforts, please support our w
 
 # License #
 TweetScraper is released under the [GNU GENERAL PUBLIC LICENSE, Version 2](https://github.com/jonbakerfish/TweetScraper/blob/master/LICENSE)
+
+
+ docker run --name test -it -v "$(pwd)/Data":/TweetScraper/Data ts
+
+  docker tag ts europe-west2-docker.pkg.dev/cryptotweets/contreg/ts
+  docker push europe-west2-docker.pkg.dev/cryptotweets/contreg/ts

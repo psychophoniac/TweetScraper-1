@@ -27,6 +27,9 @@ RUN set -x \
    && tar zxf geckodriver-*.tar.gz \
    && mv geckodriver /usr/bin/
 
+
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
-CMD ['bash']
+COPY . ./
+
+CMD ["bash"]

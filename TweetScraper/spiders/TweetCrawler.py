@@ -9,6 +9,7 @@ from scrapy_selenium import SeleniumRequest, SeleniumMiddleware
 
 from TweetScraper.items import Tweet, User
 
+import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -139,6 +140,8 @@ class TweetScraper(CrawlSpider):
             # assert k == v['id_str'], (k,v)
             tweet = Tweet()
             tweet['id_'] = k
+            tweet['query'] = self.query
+            tweet['query_time'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             tweet['raw_data'] = v
             yield tweet
 
