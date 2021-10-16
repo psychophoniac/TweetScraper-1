@@ -1,0 +1,29 @@
+version: '3'
+
+services:
+  scraper:
+    build:
+      context: ./scraper
+    image: 'scraper:local'
+    environment:
+      CRAWLER_MAX_ITEMS: 10
+      CRAWLER_QUERY: '"crypto" AND "solana"'
+    container_name: 'scraper'
+    depends_on:
+      - redis
+    links:
+      - redis
+
+  redis:
+    image: 'redis:6.2-alpine'
+    ports:
+      - '127.0.0.1:6379:6379'
+
+  consumer:
+    build:
+      context: ./consumer
+    image: 'consumer:local'
+    links:
+      - redis
+    depends_on:
+      - redis

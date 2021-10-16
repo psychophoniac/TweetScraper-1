@@ -3,3 +3,4 @@ pyenv/
 
 geckodriver.log
 *.pyc
+.idea

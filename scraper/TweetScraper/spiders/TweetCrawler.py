@@ -1,15 +1,18 @@
-import re, json, logging
+import datetime
+import json
+import logging
+import os
+import re
+import sys
+from typing import Optional
 from urllib.parse import quote
 
 from scrapy import http
-from scrapy.spiders import CrawlSpider
-from scrapy.shell import inspect_response
 from scrapy.core.downloader.middleware import DownloaderMiddlewareManager
+from scrapy.spiders import CrawlSpider
 from scrapy_selenium import SeleniumRequest, SeleniumMiddleware
 
 from TweetScraper.items import Tweet, User
-
-import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +21,16 @@ class TweetScraper(CrawlSpider):
     name = 'TweetScraper'
     allowed_domains = ['twitter.com']
 
-    def __init__(self, query=''):
+    def __init__(self, query: Optional[str] = None):
+        super().__init__()
+
+        if query is None:
+            query = os.environ.get('CRAWLER_QUERY')
+
+        if query is None:
+            logger.error('no CRAWLER_QUERY found, exiting')
+            sys.exit(1)
+
         self.url = (
             f'https://api.twitter.com/2/search/adaptive.json?'
             f'include_profile_interstitial_type=1'
@@ -49,19 +61,22 @@ class TweetScraper(CrawlSpider):
             f'&count=20'
             f'&tweet_search_mode=live'
         )
-        self.url = self.url + '&q={query}'
+        self.url = f'{self.url}&q={query}'
         self.query = query
         self.num_search_issued = 0
         # regex for finding next cursor
-        self.cursor_re = re.compile('"(scroll:[^"]*)"')
+        self.cursor_re = re.compile(r'"(scroll:[^"]*)"')
 
+        self.headers = {
+            'authorization': 'Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA',
+        }
+        self.cookies = set()
 
     def start_requests(self):
         """
         Use the landing page to get cookies first
         """
         yield SeleniumRequest(url="https://twitter.com/explore", callback=self.parse_home_page)
-
 
     def parse_home_page(self, response):
         """
@@ -72,26 +87,18 @@ class TweetScraper(CrawlSpider):
         for r in self.start_query_request():
             yield r
 
-
     def update_cookies(self, response):
         driver = response.meta['driver']
         try:
             self.cookies = driver.get_cookies()
-            self.x_guest_token = driver.get_cookie('gt')['value']
+            x_guest_token = driver.get_cookie('gt')['value']
             # self.x_csrf_token = driver.get_cookie('ct0')['value']
         except:
             logger.info('cookies are not updated!')
+        else:
+            self.headers['x-guest-token'] = x_guest_token
 
-        self.headers = {
-            'authorization': 'Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA',
-            'x-guest-token': self.x_guest_token,
-            # 'x-csrf-token': self.x_csrf_token,
-        }
-        print('headers:\n--------------------------\n')
-        print(self.headers)
-        print('\n--------------------------\n')
-
-
+        logger.info(f'headers: {self.headers}')
 
     def start_query_request(self, cursor=None):
         """
@@ -115,7 +122,6 @@ class TweetScraper(CrawlSpider):
             # update cookies
             yield SeleniumRequest(url="https://twitter.com/explore", callback=self.update_cookies, dont_filter=True)
 
-
     def parse_result_page(self, response):
         """
         Get the tweets & users & next request
@@ -134,9 +140,8 @@ class TweetScraper(CrawlSpider):
         for r in self.start_query_request(cursor=cursor):
             yield r
 
-
     def parse_tweet_item(self, items):
-        for k,v in items.items():
+        for k, v in items.items():
             # assert k == v['id_str'], (k,v)
             tweet = Tweet()
             tweet['id_'] = k
@@ -145,9 +150,8 @@ class TweetScraper(CrawlSpider):
             tweet['raw_data'] = v
             yield tweet
 
-
     def parse_user_item(self, items):
-        for k,v in items.items():
+        for k, v in items.items():
             # assert k == v['id_str'], (k,v)
             user = User()
             user['id_'] = k
